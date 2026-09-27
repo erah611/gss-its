@@ -16,23 +16,36 @@ DirectoryIndex index.html index.php
 
 RewriteEngine On
 
-# The home page lives in html/: send the bare domain straight there
-RewriteRule ^(?:index\.html)?$ /html/ [R=302,L]
+# ── Clean URLs ──────────────────────────────────────────────────────────
+# The pages live in html/ (html/about.html), but the address bar shows
+# /about. Rules 1–4 send old addresses to the clean ones (they only act on
+# what the visitor actually requested — THE_REQUEST — so they never fire on
+# the internal rewrites below and can't loop). Rules 5–6 then map each
+# clean address onto its file without changing the address bar.
+# Local development mirrors these rules in tools/dev-router.php.
 
-# The Alliances page was renamed from partner.html — send old links to it
-RewriteRule ^html/partner(?:\.html)?/?$ /html/alliances [R=302,L]
+# 1. /index.html, /html, /html/, /html/index(.html) -> /
+RewriteCond %{THE_REQUEST} \s/+(?:index\.html|html/?|html/index(?:\.html)?)[\s?] [NC]
+RewriteRule ^ / [R=302,L]
 
-# Redirect /html/index.html -> /html/
-RewriteCond %{THE_REQUEST} \s/+html/index\.html(?:[?\s]|$) [NC]
-RewriteRule ^html/index\.html$ /html/ [R=302,L]
+# 2. Renamed pages and aliases: partner -> alliances, careers -> career
+RewriteRule ^(?:html/)?partner(?:\.html)?/?$ /alliances [R=302,L,NC]
+RewriteRule ^careers/?$ /career [R=302,L,NC]
 
-# Redirect /html/about.html -> /html/about
-# Same for contact, career, etc.
-RewriteCond %{THE_REQUEST} \s/+html/([^?\s]+)\.html(?:[?\s]|$) [NC]
-RewriteRule ^html/(.+)\.html$ /html/$1 [R=302,L,NE]
+# 3. /html/about or /html/about.html -> /about
+RewriteCond %{THE_REQUEST} \s/+html/([a-z0-9-]+?)(?:\.html)?/?[\s?] [NC]
+RewriteRule ^ /%1 [R=302,L,NE]
 
-# Internally serve the .html file when the URL has no .html
-# Example: /html/about -> html/about.html
+# 4. /about.html -> /about (only for pages that exist in html/)
+RewriteCond %{THE_REQUEST} \s/+([a-z0-9-]+)\.html[\s?] [NC]
+RewriteCond %{DOCUMENT_ROOT}/html/%1.html -f
+RewriteRule ^ /%1 [R=302,L,NE]
+
+# 5. / -> html/index.html (internal)
+RewriteRule ^$ html/index.html [L]
+
+# 6. /about -> html/about.html (internal; real files and folders win)
+RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME}.html -f
-RewriteRule ^html/(.+?)/?$ html/$1.html [L]
+RewriteCond %{DOCUMENT_ROOT}/html/$1.html -f
+RewriteRule ^([a-z0-9-]+)/?$ html/$1.html [L,NC]

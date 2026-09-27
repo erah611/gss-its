@@ -461,7 +461,7 @@ function transformJob($raw) {
         $raw['apply_job_without_registration'] ?? null,
         $raw['apply_job'] ?? null,
         $raw['apply_job_login'] ?? null,
-        'contact.html'
+        '/contact'
     );
 
     $payLine = payLineFor($raw);

@@ -28,7 +28,7 @@ tools/                 Logo preparation and site checks
   diagnostics/         Standalone Ceipal diagnostic
 tests/                 PHP regression tests
   fixtures/            Captured third-party diagnostic responses
-index.html             Root entry that opens html/index.html
+index.html             Fallback root entry (opens html/index.html if rewrites are off)
 ```
 
 ## Editing
@@ -43,15 +43,17 @@ index.html             Root entry that opens html/index.html
 contain shared editorial helpers, so keep its imports in order. Edit the named
 modules instead of adding styles to the entry file.
 
-Page URLs stay under `/html/`. Links between pages use sibling filenames.
-The root entry preserves query strings and section anchors. When the preview
-server falls back to it for an old URL such as `/about.html`, it opens the
-matching page under `/html/`, with the updated image paths.
+Pages are served at clean URLs: `/` is `html/index.html` and `/about` is
+`html/about.html`. The root `.htaccess` maps them (and redirects old
+`/html/about.html`, `/about.html` and `/partner` addresses to the clean ones).
+Links between pages use these root-relative clean URLs, e.g. `href="/about"`;
+asset paths inside the pages stay relative (`../css/...`).
 
 ## Preview and checks
 
 Run the VS Code task **Start website (PHP + live careers)**, or run
-`php -S 127.0.0.1:8080 -t .` from the project root. Open
+`php -S 127.0.0.1:8080 -t . tools/dev-router.php` from the project root
+(the router applies the `.htaccess` clean URLs locally). Open
 `http://127.0.0.1:8080/`. Static previews display the site, but live careers need PHP.
 
 ```text

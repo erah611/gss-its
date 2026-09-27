@@ -28,7 +28,7 @@ function form_log($logFile, $message) {
 }
 
 // Redirect back to the form's own page and stop, e.g.
-// ../html/career.html?status=success
+// /career?status=success
 function form_redirect($page, $status) {
     header('Location: ' . $page . '?status=' . $status);
     exit();

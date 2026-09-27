@@ -69,11 +69,11 @@
 
   function safeApplyLink(value) {
     var link = String(value || '').trim();
-    if (!link) return 'contact.html';
+    if (!link) return '/contact';
     try {
       var url = new URL(link, window.location.href);
-      return /^(https?:|mailto:)$/.test(url.protocol) ? url.href : 'contact.html';
-    } catch (e) { return 'contact.html'; }
+      return /^(https?:|mailto:)$/.test(url.protocol) ? url.href : '/contact';
+    } catch (e) { return '/contact'; }
   }
 
   /* ── 1. Load ───────────────────────────────────────────── */
@@ -311,7 +311,7 @@
                                       : String(id).replace(/[^\w-]/g, '');
   }
 
-  /* Opens career.html#job-senior-power-bi-developer directly. */
+  /* Opens /career#job-senior-power-bi-developer directly. */
   function openFromHash() {
     var h = (location.hash || '').replace(/^#job-/, '');
     if (!h || h === location.hash) return;
@@ -374,7 +374,7 @@
       '<h3 class="car-state__title">Openings are taking a moment to load.</h3>' +
       '<p class="car-state__text">Please refresh the page. If this keeps happening, ' +
         'you can still reach us directly and we will send you the current list.</p>' +
-      '<a class="btn btn-outline btn-sm" href="contact.html">Talk to Us ' +
+      '<a class="btn btn-outline btn-sm" href="/contact">Talk to Us ' +
         '<svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg></a>';
     stateEl.hidden = false;
   }

@@ -34,8 +34,16 @@ def local_target(source, value):
     if url.scheme or url.netloc or not url.path:
         return None
     path = unquote(url.path)
-    return ((ROOT / path.lstrip('/')) if path.startswith('/')
-            else source.parent / path).resolve()
+    if path.startswith('/'):
+        # Clean page URLs (see the root .htaccess): / and /about map to html/.
+        slug = path.strip('/')
+        if not slug:
+            return ROOT / 'html' / 'index.html'
+        page = ROOT / 'html' / f'{slug}.html'
+        if re.fullmatch(r'[a-z0-9-]+', slug) and page.is_file():
+            return page
+        return (ROOT / path.lstrip('/')).resolve()
+    return (source.parent / path).resolve()
 
 
 def collect_references():

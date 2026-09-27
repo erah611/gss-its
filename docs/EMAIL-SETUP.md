@@ -9,7 +9,7 @@ Both forms (`html/career.html`'s "Stay connected" panel and
 html/career.html   ──POST──▶  server/careers-submit.php  ──┐
 html/contact.html  ──POST──▶  server/contact-submit.php  ──┤  mail()
                                                              ▼
-                      302 → html/<form page>?status=success | ?status=error
+                      302 → /career or /contact ?status=success | ?status=error
 ```
 
 No SMTP, no mailbox password, no mail library. Shared code:

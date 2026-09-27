@@ -20,11 +20,11 @@ and Apply buttons use that feed. Credentials stay in PHP, outside browser code.
    `index.html`, and the `server/` directory, preserving their folder structure.
    Allow PHP to write the cache beside the endpoint if caching is desired.
 4. Open `/server/careers-jobs.php`. A successful response is JSON with a `jobs` array.
-   Then open `/html/career.html#opportunities` and check a role's Apply link.
+   Then open `/career#opportunities` and check a role's Apply link.
 
 For local use, run the VS Code task **Start website (PHP + live careers)**
-from **Terminal > Run Task**, then visit `http://127.0.0.1:8080/html/career.html`.
-The equivalent command is `php -S 127.0.0.1:8080 -t .` from the project root.
+from **Terminal > Run Task**, then visit `http://127.0.0.1:8080/career`.
+The equivalent command is `php -S 127.0.0.1:8080 -t . tools/dev-router.php` from the project root.
 If the preview is already running on port 8080, reuse it instead of starting
 a second server.
 

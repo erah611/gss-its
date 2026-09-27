@@ -10,7 +10,7 @@
 require_once __DIR__ . '/lib/form-mail.php';
 require_once __DIR__ . '/lib/spam-guard.php';
 
-const FORM_PAGE       = '../html/contact.html';
+const FORM_PAGE       = '/contact';         // clean URL (see the root .htaccess)
 const SUBMISSIONS_LOG = __DIR__ . '/contact-submissions.log';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

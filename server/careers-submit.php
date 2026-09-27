@@ -15,7 +15,7 @@
 require_once __DIR__ . '/lib/form-mail.php';
 require_once __DIR__ . '/lib/spam-guard.php';
 
-const FORM_PAGE       = '../html/career.html';
+const FORM_PAGE       = '/career';          // clean URL (see the root .htaccess)
 const SUBMISSIONS_LOG = __DIR__ . '/careers-submissions.log';
 const MAX_FILE_SIZE   = 10 * 1024 * 1024; // 10 MB — matches js/pages/career-form.js
 
