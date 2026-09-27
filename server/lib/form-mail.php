@@ -8,7 +8,7 @@
  * agent, which is authorised to send for globalsoftsystems.com.
  */
 
-const FORM_MAIL_TO   = 'erah@globalsoftsystems.com, erah@gsspros.com';
+const FORM_MAIL_TO   = 'contact@globalsoftsystems.com, erah@globalsoftsystems.com, erah@gsspros.com, josh@gsspros.com';
 // Must be an address on the domain hosted on this server, or Outlook and
 // others will likely reject/spam the message.
 const FORM_MAIL_FROM = 'noreply@globalsoftsystems.com';

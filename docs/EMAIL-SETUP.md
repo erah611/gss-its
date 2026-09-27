@@ -23,7 +23,7 @@ No SMTP, no mailbox password, no mail library. Shared code:
 Set in `server/lib/form-mail.php` (not in the frontend):
 
 ```php
-const FORM_MAIL_TO   = 'erah@globalsoftsystems.com, erah@gsspros.com';
+const FORM_MAIL_TO   = 'contact@globalsoftsystems.com, erah@globalsoftsystems.com, erah@gsspros.com, josh@gsspros.com';
 const FORM_MAIL_FROM = 'noreply@globalsoftsystems.com';
 ```
 
