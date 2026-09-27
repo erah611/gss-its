@@ -251,6 +251,15 @@ html[data-theme="dark"] .pnr-models { background: var(--bg-soft); }
   .pnr-hero-dots { display: none; }
 }
 
+/* phones: both photos inset by the same gutter as the text (the CTA photo
+   already sits in .container) and rounded like the site's cards — same
+   treatment as the About page's stacked photos */
+@media (max-width: 767.98px) {
+  .pnr-position__media { margin-inline: var(--gutter); }
+  .pnr-position__media,
+  .pnr-final__media { border-radius: var(--radius-sm); }
+}
+
 /* every button on this page fills gold on hover, same recipe as the
    footer's "Explore Insights" pill — just slowed and eased further so
    the fill reads as a smooth wash rather than a snap */
