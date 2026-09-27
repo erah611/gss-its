@@ -274,11 +274,15 @@ html[data-theme="dark"] .abx-company { background: var(--bg-sky); }
    the tinted section in light mode; dark mode gets a minimal white plate so
    the black/navy logo artwork stays legible */
 .abx-company__proof {
+  /* every logo sits in the same box: a 2 x 2 grid of equal cells */
+  --cred-box: clamp(104px, 14vw, 156px);
   list-style: none; margin: 0; padding: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(18px, 2.6vw, 34px) clamp(20px, 3vw, 40px);
-  align-items: center;
+  /* cells in a row share one height, so the rows line up; each logo is
+     centred inside its cell by .abx-cred's own flex centring */
+  align-items: stretch;
 }
 .abx-cred {
   display: flex; align-items: center; justify-content: center;
@@ -290,10 +294,10 @@ html[data-theme="dark"] .abx-cred {
   padding: clamp(14px, 2vw, 22px);
   box-shadow: 0 10px 30px rgba(0,0,0,.35);
 }
-.abx-cred--wide { grid-column: 1 / -1; }
-.abx-cred img { display: block; width: auto; height: auto; max-width: 100%; }
-.abx-cred:not(.abx-cred--wide) img { max-height: clamp(118px, 14vw, 156px); }
-.abx-cred--wide img { max-height: clamp(60px, 8vw, 88px); }
+.abx-cred { min-height: var(--cred-box); }
+/* each logo fits its cell's box at its own proportions: square badges fill
+   its height, the wide USPAACC mark fills the cell's width */
+.abx-cred img { display: block; width: auto; height: auto; max-width: 100%; max-height: var(--cred-box); }
 /* Inc. 5000 has separate light/dark-theme artwork; swap on theme like the
    header logo does instead of relying on the white plate alone. Both rules
    need to out-specificity ".abx-cred img" (class+tag), so they repeat the
@@ -307,7 +311,7 @@ html[data-theme="dark"] .abx-cred img.abx-cred-logo--dark { display: block; }
    Crop to a matching box and zoom the mark to fill it the same way. */
 .abx-cred-crop {
   display: block; overflow: hidden;
-  width: clamp(118px, 14vw, 156px); height: clamp(118px, 14vw, 156px);
+  width: var(--cred-box); height: var(--cred-box);
 }
 .abx-cred-crop img.abx-cred-logo {
   width: 100%; height: 100%; max-width: none; max-height: none;
@@ -470,7 +474,8 @@ html[data-theme="dark"] .abx-cred img.abx-cred-logo--dark { display: block; }
   .abx-flow__desc { max-width: none; }
   .abx-work__foot { text-align: left; }
   .abx-process__lead, .abx-process__rule { margin-inline: 0; }
-  .abx-company__proof { grid-template-columns: minmax(0, 1fr); }
+  /* phones keep the 2 x 2 grid, with tighter gaps */
+  .abx-company__proof { gap: 14px 12px; }
 }
 
 /* ── REDUCED MOTION ──────────────────────────────────────── */
