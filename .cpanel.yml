@@ -1,7 +1,8 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home4/globalso/public_html/newsite/
+    # The site lives at the domain's root (public_html), not /newsite/
+    - export DEPLOYPATH=/home4/globalso/public_html/
 
     # Ensure deployment directories exist
     - /bin/mkdir -p "$DEPLOYPATH"

@@ -1,19 +1,38 @@
+# Root .htaccess for the site at the top of public_html (globalsoftsystems.com/).
+#
+# BEFORE THE FIRST DEPLOY: cPanel may keep its own rules in public_html/.htaccess,
+# e.g. a block starting "# php -- BEGIN cPanel-generated handler, do not edit"
+# that selects the PHP version, or HTTPS redirects. This file replaces that
+# .htaccess on every deploy, so copy any such block from the server's current
+# file into the space marked below first.
+
+# ---- cPanel-generated rules (paste here, if any) ----
+
+# ------------------------------------------------------
+
+# Serve this site's index.html at the root even if an older site left an
+# index.php behind in public_html.
+DirectoryIndex index.html index.php
+
 RewriteEngine On
 
+# The home page lives in html/: send the bare domain straight there
+RewriteRule ^(?:index\.html)?$ /html/ [R=302,L]
+
 # The Alliances page was renamed from partner.html — send old links to it
-RewriteRule ^html/partner(?:\.html)?/?$ /newsite/html/alliances [R=302,L]
+RewriteRule ^html/partner(?:\.html)?/?$ /html/alliances [R=302,L]
 
-# Redirect /newsite/html/index.html -> /newsite/html/
-RewriteCond %{THE_REQUEST} \s/+newsite/html/index\.html(?:[?\s]|$) [NC]
-RewriteRule ^html/index\.html$ /newsite/html/ [R=302,L]
+# Redirect /html/index.html -> /html/
+RewriteCond %{THE_REQUEST} \s/+html/index\.html(?:[?\s]|$) [NC]
+RewriteRule ^html/index\.html$ /html/ [R=302,L]
 
-# Redirect /newsite/html/about.html -> /newsite/html/about
+# Redirect /html/about.html -> /html/about
 # Same for contact, career, etc.
-RewriteCond %{THE_REQUEST} \s/+newsite/html/([^?\s]+)\.html(?:[?\s]|$) [NC]
-RewriteRule ^html/(.+)\.html$ /newsite/html/$1 [R=302,L,NE]
+RewriteCond %{THE_REQUEST} \s/+html/([^?\s]+)\.html(?:[?\s]|$) [NC]
+RewriteRule ^html/(.+)\.html$ /html/$1 [R=302,L,NE]
 
 # Internally serve the .html file when the URL has no .html
-# Example: /newsite/html/about -> html/about.html
+# Example: /html/about -> html/about.html
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME}.html -f
 RewriteRule ^html/(.+?)/?$ html/$1.html [L]
