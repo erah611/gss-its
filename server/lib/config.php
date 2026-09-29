@@ -3,7 +3,7 @@
 require_once __DIR__ . '/env.php';
 
 const GSS_SETTINGS_FILE = '/home2/gssitd54/.env.gss_its';
-// Local development only: the gitignored copy beside server/, used when the
+// Local development only: the giti gnored copy beside server/, used when the
 // production file (outside the web root) doesn't exist on this machine.
 const GSS_LOCAL_SETTINGS_FILE = __DIR__ . '/../.env.gss_newsite';
 
