@@ -8,10 +8,10 @@
  * agent, which is authorised to send for globalsoftsystems.com.
  */
 
-const FORM_MAIL_TO   = 'contact@globalsoftsystems.com, erah@globalsoftsystems.com, erah@gsspros.com, josh@gsspros.com';
+const FORM_MAIL_TO   = 'contact@gss-its.com, erah@gss-its.com, erah@gss-its.net';
 // Must be an address on the domain hosted on this server, or Outlook and
 // others will likely reject/spam the message.
-const FORM_MAIL_FROM = 'noreply@globalsoftsystems.com';
+const FORM_MAIL_FROM = 'noreply@gss-its.com';
 
 // Strips CR/LF so form input can never inject extra mail headers.
 function form_clean($value) {
