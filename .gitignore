@@ -1,0 +1,14 @@
+# Ceipal integration — never commit real credentials or runtime files
+careers-config.php
+careers-cache.json
+careers-errors.log
+.local-tools/
+
+# Form submission logs contain candidate/inquiry PII — never commit
+server/careers-submissions.log
+server/contact-submissions.log
+
+# Credentials live only in server/.env.gss_newsite — never commit.
+server/.env*
+# Easy Apply CAPTCHA signing key — generated on first use, never commit
+server/.captcha-secret

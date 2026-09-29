@@ -1,0 +1,645 @@
+/* ── 09. HERO CAROUSEL ───────────────────────────────────── */
+.hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg-sky);
+  margin-top: var(--header-h);
+
+  /* ── HERO HEIGHT DIAL ─────────────────────────────────────────────
+     Sets hero height as a proportion of remaining viewport height after
+     the navbar, ensuring Navbar + Hero + How GSS Works heading all fit
+     within exactly one viewport height without scrolling. */
+  --hero-scale: 0.69;
+  --hero-h: max(calc((100svh - var(--header-h)) * var(--hero-scale)), 340px);
+
+  /* 1.1 = 10% taller. The extra height is added as padding split evenly
+     above and below the slide content (so the content stays centred and
+     the photo, which fills the slide, grows with it), and min-height grows
+     by the same total. That way the hero gains the same amount whether its
+     height comes from min-height or, on shorter screens, from its content.
+     Also scales the portrait-phone photo band in responsive.css. */
+  --hero-grow: 1.1;
+  --hero-grow-pad: calc(var(--hero-h) * (var(--hero-grow) - 1) / 2);
+  /* How far the background photo sits above the hero's top edge, as a
+     share of the hero's height. The photo box is extended by the same
+     amount so it still reaches the bottom edge — see .hero-media img. */
+  --hero-photo-shift: 20%;
+
+  /* the dots + scroll cue and their offset off the bottom edge. */
+  --hero-chrome-h: 90px;
+}
+
+.hero-viewport {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, auto);
+  min-height: calc(var(--hero-h) * var(--hero-grow));
+}
+
+.hero-slide {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-block:
+    calc(clamp(10px, 2.4svh, 22px) + var(--hero-grow-pad))
+    calc(max(calc(var(--hero-chrome-h) + 6px), clamp(44px, 9.5svh, 96px)) + var(--hero-grow-pad));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* two slides overlap mid-crossfade, each still running its own cred-card
+     blur live — this hint lets the browser pre-promote the whole slide to
+     a compositor layer instead of discovering it needs one partway through
+     the fade, which is part of what was reading as a glitch/stutter */
+  will-change: opacity;
+  transition: opacity .85s var(--ease), visibility .85s var(--ease);
+}
+.hero-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.hero-media {
+  position: absolute; inset: 0; overflow: hidden; z-index: -1;
+  background: var(--bg-sky);
+  /* Make the photo frame itself a query container. Its size comes
+     entirely from inset:0 (never from the images inside it), so
+     size containment here is safe — and it lets the cover/contain
+     rule below react to the frame's REAL shape. That matters now
+     that the hero is 30% shorter: the frame's aspect ratio no
+     longer tracks the window's, so a window-based media query
+     would be reading the wrong box. */
+  container-type: size;
+  container-name: hero-frame;
+}
+.hero-media img {
+  position: absolute; inset: 0;
+  width: 100%;
+  /* Lifted by --hero-photo-shift: the box starts that far above the
+     frame and is that much taller, so its bottom edge still meets the
+     frame's and "cover" can never leave a gap underneath. */
+  top: calc(var(--hero-photo-shift) * -1);
+  height: calc(100% + var(--hero-photo-shift));
+  /* anchor to the top so any unavoidable cover-crop is taken from the
+     bottom of the photo, never the top */
+  object-fit: cover; object-position: top center;
+  /* dim the photograph itself rather than piling on a white veil, so the
+     navy headline gains contrast instead of losing it */
+  filter: brightness(var(--hero-dim)) contrast(1.04) saturate(1.06);
+}
+/* Neither "cover" nor "contain" ever squashes the photo — both keep its
+   real proportions, so there's no distortion in either mode. The choice
+   is only about which compromise you take when the frame's shape doesn't
+   match the photo's (~16:9):
+     cover   — fills the frame, trims whatever doesn't fit
+     contain — shows the whole photo, leaves a soft band of --bg-sky
+   On a tall, narrow frame "cover" has to blow the photo up and cut away
+   most of its width, so "contain" is the better trade there.
+
+   Fallback first, for browsers without container queries — this is the
+   original window-based rule, so those browsers behave exactly as before. */
+@media (max-aspect-ratio: 4/5) {
+  .hero-media img { object-fit: contain; top: 0; height: 100%; }
+}
+/* Then the accurate version: measure the photo frame itself. A shorter
+   hero makes the frame wider relative to its height, so "cover" now
+   crops far less than it used to and stays the better choice down to
+   genuinely narrow frames — which is why this can override the
+   fallback in both directions. Anchored to the top either way, so any
+   leftover space lands at the bottom and the skyline is never clipped.
+   The --hero-photo-shift lift only applies with "cover": "contain" shows
+   the whole photo, so lifting it would clip the skyline's top instead. */
+@container hero-frame (max-aspect-ratio: 4/5) {
+  .hero-media img { object-fit: contain; top: 0; height: 100%; }
+}
+@container hero-frame (min-aspect-ratio: 4/5) {
+  .hero-media img {
+    object-fit: cover;
+    top: calc(var(--hero-photo-shift) * -1);
+    height: calc(100% + var(--hero-photo-shift));
+  }
+}
+/* Some slides (skyline, data hall) carry two real photos — day/light and
+   night/dark — instead of darkening one image for dark mode like the
+   remaining slides still do. Both sit stacked via the position:absolute
+   above; only one is ever displayed. The dark plate is already graded
+   for its theme, so it keeps a light touch-up instead of the brightness
+   cut the light plate gets. */
+.hero-media .hero-media-img--night { display: none; }
+html[data-theme="dark"] .hero-media .hero-media-img--day { display: none; }
+html[data-theme="dark"] .hero-media .hero-media-img--night {
+  display: block;
+  filter: contrast(1.02) saturate(1.02);
+}
+.hero-tint { position: absolute; inset: 0; }
+
+/* per-plate dimming — the data hall and office interior are the hottest,
+   the skyline (slide 0) is already well graded and keeps the default */
+.hero-slide[data-slide="1"] { --hero-dim: .78; }  /* data hall  */
+.hero-slide[data-slide="2"] { --hero-dim: .82; }  /* office     */
+.hero-slide[data-slide="3"] { --hero-dim: .86; }  /* horizon    */
+
+/* per-image veils so navy text reads equally on all four photos */
+.tint-1 { background:
+  radial-gradient(ellipse 72% 62% at 50% 44%, var(--veil-core), var(--veil-edge) 72%),
+  linear-gradient(180deg, var(--veil-wash), transparent 42%, var(--veil-wash)); }
+.tint-2 { background:
+  radial-gradient(ellipse 78% 68% at 50% 46%, var(--veil-core), var(--veil-edge) 74%),
+  linear-gradient(180deg, var(--veil-wash), transparent 46%, var(--veil-wash)); }
+.tint-3 { background:
+  radial-gradient(ellipse 76% 66% at 50% 42%, var(--veil-core), var(--veil-edge) 76%),
+  linear-gradient(180deg, var(--veil-wash), transparent 36%, var(--veil-wash)); }
+.tint-4 { background:
+  radial-gradient(ellipse 70% 60% at 50% 44%, var(--veil-core), var(--veil-edge) 72%),
+  linear-gradient(180deg, var(--veil-wash), transparent 44%, var(--veil-wash)); }
+html[data-theme="dark"] .hero-media img { filter: brightness(var(--hero-dim)) saturate(.85); }
+html[data-theme="dark"] .hero-slide[data-slide="2"],
+html[data-theme="dark"] .hero-slide[data-slide="3"] { --hero-dim: .48; }
+
+.hero-content { text-align: center; }
+.hero-content > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity .75s var(--ease), transform .75s var(--ease);
+}
+.hero-slide.is-active .hero-content > * { opacity: 1; transform: none; }
+.hero-slide.is-active .hero-content > *:nth-child(1) { transition-delay: .12s; }
+.hero-slide.is-active .hero-content > *:nth-child(2) { transition-delay: .20s; }
+.hero-slide.is-active .hero-content > *:nth-child(3) { transition-delay: .28s; }
+.hero-slide.is-active .hero-content > *:nth-child(4) { transition-delay: .36s; }
+.hero-slide.is-active .hero-content > *:nth-child(5) { transition-delay: .44s; }
+.hero-slide.is-active .hero-content > *:nth-child(6) { transition-delay: .52s; }
+
+/* every hero headline size below (and in responsive.css) is multiplied by
+   this, so all four slides shrink or grow together at every screen size */
+.hero { --hero-title-scale: .8; }
+.hero-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  /* eased down from a 4.25rem cap so two lines of headline cost ~25px
+     less height; still comfortably the dominant element on the page */
+  font-size: calc(clamp(1.9rem, 4.1vw, 3.6rem) * var(--hero-title-scale, 1));
+  line-height: 1.1;
+  letter-spacing: -.018em;
+  color: var(--navy);
+  margin-bottom: 18px;
+  text-wrap: balance;
+}
+.hero-sub {
+  max-width: 68ch;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.35vw, 1.115rem);
+  line-height: 1.62;
+  text-wrap: pretty;
+}
+.hero-tagline {
+  margin-top: 20px;
+  font-size: 1rem;
+  color: var(--navy);
+  font-weight: 500;
+}
+.hero-cta { margin-top: 24px; }
+/* Slide 1 is the only slide carrying a 5-up cred-row, which makes its
+   content block taller than the other three; since hero-content is
+   vertically centered as a single unit, that extra height brings this
+   slide's CTA button noticeably closer to the shared dot chrome fixed to
+   the bottom of the hero. Nudging it up here restores even breathing
+   room without touching the chrome or any other slide. */
+.hero-slide[data-slide="0"] .hero-cta { margin-bottom: 16px; }
+/* Slide 1 also carries the eyebrow now; a tighter gap under it keeps the
+   tallest slide from growing any more than it has to. */
+.hero-slide[data-slide="0"] .eyebrow { margin-bottom: clamp(10px, 1.2vw, 14px); }
+
+/* Metallic gold for the hero's eyebrow, its rules and the active dot.
+   The light hero photos are pale steel blue (~#C4CEDC), where a flat bright
+   gold washes out (--gold is only 1.6:1). So the gold is a gradient: deep
+   bronze at the ends carries the legibility, a bright champagne highlight
+   in the middle gives the shine, and a slow sweep moves that highlight
+   across. A hairline navy drop-shadow keeps the letter edges crisp against
+   the sky (text-shadow can't be used — it would paint over a clipped
+   background). Dark mode keeps --gold, which already reads on the night
+   images; reduced-motion users get the gradient without the sweep. */
+html:not([data-theme="dark"]) .hero .eyebrow {
+  font-weight: 700;
+  background: linear-gradient(100deg,
+    #7A5A1E 0%, #A97C2A 18%, #E2B650 32%, #FFF0B5 42%,
+    #F2CB62 50%, #A97C2A 66%, #7A5A1E 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 .5px 0 rgba(15, 34, 71, .45));
+  animation: heroGoldShine 6s linear infinite;
+}
+html:not([data-theme="dark"]) .hero .eyebrow .rule {
+  opacity: 1;
+  background: linear-gradient(90deg, #9C7426, #F2CB62 50%, #9C7426);
+}
+html:not([data-theme="dark"]) .hero .dot.is-active::before {
+  background: linear-gradient(90deg, #A97C2A, #FFE39A 50%, #A97C2A);
+  box-shadow: 0 0 6px rgba(226, 182, 80, .55);
+}
+@keyframes heroGoldShine {
+  from { background-position: 100% 0; }
+  to   { background-position: -150% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-theme="dark"]) .hero .eyebrow { animation: none; background-position: 60% 0; }
+}
+
+/* credibility card rows
+   Everything here is fluid: the row width, the gaps, the card padding, the
+   icon and both type sizes all scale continuously with the viewport, so the
+   cards track the rest of the hero instead of freezing between breakpoints. */
+.cred-row {
+  display: grid;
+  gap: calc(clamp(8px, .8vw, 14px) * var(--cred-k, 1));
+  margin: clamp(18px, 2.6vw, 32px) auto 0;
+  width: 100%;
+  /* Promote the row to its own compositor layer *before* the entrance
+     transition starts (not once it's already under way). Without this,
+     the browser only creates the layer partway through the opacity/
+     transform animation inherited from .hero-content > *, so the glass
+     cards' backdrop-filter gets established mid-flight — reading as the
+     cards "popping" into correct glass only after they've settled. */
+  will-change: opacity, transform;
+}
+.cred-row.cols-4 {
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  /* wide enough for the longest labels ("Technology That Fits",
+     "Execute with accountability") to stay on one line on desktop, so
+     every slide's cards keep slide 4's compact size */
+  max-width: calc(min(100%, clamp(640px, 76vw, 1160px)) * var(--cred-k, 1));
+}
+/* one shared height for every hero card on every slide — set by
+   heroCardHeights() in site.js from the tallest card, so cards whose
+   text wraps at a given width don't come out taller than the rest */
+.hero .cred-card { min-height: var(--cred-card-h, 0px); }
+/* the hero's overlay cards at 90% of their original size: row width, text,
+   icon, padding, spacing and corner radius all multiply by --cred-k */
+.hero { --cred-k: .9; }
+.cred-row.cols-5 {
+  grid-template-columns: repeat(5, minmax(0,1fr));
+  max-width: calc(min(100%, clamp(660px, 74vw, 1100px)) * var(--cred-k, 1));
+}
+
+/* "Liquid glass" material, tuned against Apple's own Control Center
+   reference — a much thinner white wash than a card, heavy saturating
+   blur so it reads as true see-through glass, a large "squircle" radius,
+   and a barely-there rim instead of a hard border. Always white-tinted in
+   both themes (the glass itself never turns navy for dark mode, only what
+   sits behind it does), and ink stays fixed dark for the same reason —
+   Apple's reference uses white text, but that only stays legible there
+   because their vibrancy engine adapts per-pixel in real time; a static
+   CSS glass this transparent needs dark ink to guarantee contrast against
+   an arbitrary patch of photo, which is why it's kept even as the glass
+   itself gets closer to the reference. Four cards × two overlapping
+   slides mid-crossfade is a lot of live backdrop-filter, which is what
+   was glitching — transform:translateZ(0) promotes each card to its own
+   compositor layer so the browser blurs it once and reuses that layer
+   instead of recomputing every frame, and hover no longer animates the
+   gradient itself (expensive) — only the already-cheap transform/shadow. */
+.cred-card {
+  --glass-sheen: rgba(255,255,255,.75);
+  --glass-rim: rgba(255,255,255,.6);
+  --glass-rim-dim: rgba(255,255,255,.22);
+  --cred-ink: #0F2247;
+  --cred-ink-soft: #0F2247;
+  position: relative;
+  display: flex; align-items: center;
+  gap: calc(clamp(8px, .8vw, 12px) * var(--cred-k, 1));
+  padding: calc(clamp(10px, .95vw, 15px) * var(--cred-k, 1)) calc(clamp(10px, 1vw, 16px) * var(--cred-k, 1));
+  border-radius: calc(clamp(15px, 1.7vw, 23px) * var(--cred-k, 1));
+  background: linear-gradient(165deg, rgba(255,255,255,.56), rgba(255,255,255,.32));
+  border: 1px solid var(--glass-rim-dim);
+  border-top-color: var(--glass-rim);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(165%);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  contain: paint;
+  box-shadow:
+    inset 0 1px 1px var(--glass-sheen),
+    inset 0 -1px 8px rgba(255,255,255,.1),
+    0 6px 20px rgba(15,34,71,.14);
+  overflow: hidden;
+  text-align: left;
+  min-width: 0;
+  transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+}
+/* the night photo is dimmed hard (brightness .50, plus a dark veil), so
+   the same thin wash that reads fine over the brighter day photo isn't
+   opaque enough here to lift the backdrop for dark ink to stay legible
+   — still white, just less see-through, rather than switching to a
+   colored (navy) tint or flipping the text light */
+html[data-theme="dark"] .cred-card {
+  background: linear-gradient(165deg, rgba(255,255,255,.6), rgba(255,255,255,.36));
+}
+/* a soft diagonal sheen, like glass catching light from the upper-left.
+   Being absolutely positioned, it would otherwise paint above the card's
+   non-positioned flex children regardless of DOM order — .cred-ico and
+   .cred-txt are given position:relative below so they paint after it
+   (later in source = on top, once both are "positioned"), keeping text
+   crisp above the sheen without resorting to a numeric z-index. */
+.cred-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--glass-sheen) 0%, transparent 40%);
+  opacity: .3;
+  pointer-events: none;
+}
+.cred-card.is-stacked {
+  flex-direction: column; text-align: center;
+  gap: calc(clamp(4px, .5vw, 7px) * var(--cred-k, 1));
+  padding: calc(clamp(11px, 1.1vw, 17px) * var(--cred-k, 1)) calc(clamp(8px, .8vw, 13px) * var(--cred-k, 1));
+  border-radius: calc(clamp(16px, 1.8vw, 24px) * var(--cred-k, 1));
+}
+.cred-card:hover {
+  transform: translateY(-3px) translateZ(0);
+  box-shadow:
+    inset 0 1px 1px var(--glass-sheen),
+    inset 0 -1px 8px rgba(255,255,255,.1),
+    0 12px 30px rgba(15,34,71,.2);
+}
+.cred-ico { position: relative; color: var(--cred-ink); display: grid; place-items: center; }
+.cred-ico .ico { width: calc(clamp(16px, 1.55vw, 22px) * var(--cred-k, 1)); height: calc(clamp(16px, 1.55vw, 22px) * var(--cred-k, 1)); }
+.cred-txt { position: relative; display: block; min-width: 0; }
+.cred-txt strong {
+  display: block;
+  font-size: calc(clamp(.61rem, .34vw + .5rem, .755rem) * var(--cred-k, 1));
+  font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--cred-ink); line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.cred-txt small {
+  display: block; margin-top: 3px;
+  font-size: calc(clamp(.575rem, .28vw + .48rem, .69rem) * var(--cred-k, 1));
+  font-weight: 600;
+  letter-spacing: .04em; line-height: 1.35;
+  color: var(--cred-ink-soft); text-transform: uppercase;
+  opacity: .82;
+  overflow-wrap: anywhere;
+}
+
+/* shared chrome: dots + chevron */
+/* Kept in step with --hero-chrome-h on .hero: 16 + 22 (dots) + 8 (gap)
+   + 44 (cue) = 90px. If any of these change, change that token too. */
+.hero-chrome {
+  position: absolute; left: 0; right: 0; bottom: 16px;
+  z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  pointer-events: none;
+}
+.hero-dots { display: flex; gap: 10px; pointer-events: auto; }
+.dot {
+  width: 30px; height: 22px; padding: 9px 0 0; /* 44px-friendly hit area via ::before */
+  position: relative;
+}
+.dot::before {
+  content: ""; display: block;
+  width: 100%; height: 3px; border-radius: 2px;
+  background: color-mix(in srgb, var(--navy) 28%, transparent);
+  transition: background-color .3s var(--ease), transform .3s var(--ease);
+}
+.dot::after { content: ""; position: absolute; inset: -12px -4px; }
+.dot:hover::before { background: color-mix(in srgb, var(--navy) 50%, transparent); }
+.dot.is-active::before { background: var(--gold); transform: scaleY(1.34); }
+
+.scroll-cue {
+  pointer-events: auto;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  color: var(--navy);
+  animation: cue-bounce 2.6s var(--ease) infinite;
+}
+/* the box stays 44px so the tap target does; only the glyph slims down */
+.scroll-cue .ico { width: 22px; height: 22px; }
+@keyframes cue-bounce {
+  0%, 22%, 100% { transform: translateY(0); opacity: .75; }
+  10%           { transform: translateY(7px); opacity: 1; }
+}
+
+/* The hero's height tiers used to live here. They now sit at the END of
+   base/responsive.css instead: that file is imported after this one, so
+   its width-based blocks (max-width: 1024px / 768px) were overriding
+   these height-based ones on short, narrow screens — exactly the case
+   the tiers exist for. Vertical-space rules have to win, so they go last.
+   Look for "HERO HEIGHT TIERS" in base/responsive.css. */
+
+
+
+
+/* ── 10. ABOUT / PROCESS TIMELINE ────────────────────────── */
+.process {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 24px;
+  margin-top: clamp(40px, 5vw, 64px);
+}
+.process::before {
+  content: ""; position: absolute;
+  top: 33px; left: 16.666%; right: 16.666%;
+  height: 1px; background: var(--line);
+}
+.step { position: relative; text-align: center; padding-inline: 8px; }
+.step:not(:last-child)::after {
+  content: ""; position: absolute;
+  top: 33px; left: 100%;
+  transform: translate(-50%, -50%);
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--gold);
+  z-index: 2;
+}
+.step-node {
+  position: relative; z-index: 2;
+  width: 66px; height: 66px;
+  margin: 0 auto 26px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg-soft);
+  font-family: var(--serif);
+  font-size: 1.28rem;
+  color: var(--navy);
+  transition: border-color .3s var(--ease), box-shadow .3s var(--ease);
+}
+.step:hover .step-node { border-color: var(--gold); box-shadow: 0 0 0 5px color-mix(in srgb, var(--gold) 12%, transparent); }
+.step-title {
+  font-family: var(--sans);
+  font-size: .845rem; font-weight: 700;
+  letter-spacing: .105em; text-transform: uppercase;
+  color: var(--navy);
+  margin-bottom: 12px;
+}
+.step-copy { color: var(--muted); font-size: .95rem; max-width: 34ch; margin-inline: auto; }
+
+
+/* ── 11. SOLUTIONS & SERVICES ────────────────────────────── */
+.solutions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: clamp(18px, 2vw, 28px);
+  margin-top: clamp(46px, 5.5vw, 70px);
+}
+.sol-card {
+  position: relative;
+  display: block;
+  padding: clamp(28px, 3vw, 42px);
+  border-radius: var(--radius);
+  background: var(--card-soft);
+  border: 1px solid var(--hairline);
+  transition: transform .32s var(--ease), box-shadow .32s var(--ease), border-color .32s var(--ease);
+}
+.sol-card:nth-child(2), .sol-card:nth-child(3) { background: var(--bg-sky); }
+.sol-card:hover { transform: translateY(-5px); box-shadow: var(--sh-md); border-color: color-mix(in srgb, var(--gold) 40%, var(--hairline)); }
+.sol-ico {
+  display: grid; place-items: center;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--navy);
+  background: var(--card);
+  margin-bottom: 24px;
+  transition: transform .35s var(--ease), border-color .35s var(--ease), color .35s var(--ease);
+}
+.sol-ico .ico { width: 25px; height: 25px; }
+.sol-card:hover .sol-ico { transform: translateY(-2px) scale(1.06); border-color: var(--gold); color: var(--gold); }
+.sol-card h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(1.18rem, 1.8vw, 1.45rem);
+  line-height: 1.24;
+  color: var(--navy);
+  margin-bottom: 12px;
+  padding-right: 40px;
+}
+.sol-card p { color: var(--muted); font-size: .965rem; }
+.sol-arrow {
+  position: absolute; top: clamp(28px, 3vw, 42px); right: clamp(24px, 3vw, 38px);
+  color: var(--muted-2);
+  transition: transform .3s var(--ease), color .3s var(--ease);
+}
+.sol-arrow .ico { width: 22px; height: 22px; }
+.sol-card:hover .sol-arrow { transform: translateX(5px); color: var(--gold); }
+
+
+/* ── 12. TALENT & STAFFING ───────────────────────────────── */
+.staffing-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.staffing-bg img { width: 100%; height: 100%; object-fit: cover; }
+.staffing-bg::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg-soft) 91%, transparent) 0%,
+    color-mix(in srgb, var(--bg-soft) 74%, transparent) 45%,
+    color-mix(in srgb, var(--bg-soft) 93%, transparent) 100%);
+}
+.section-staffing > .container { position: relative; z-index: 1; }
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: clamp(16px, 1.8vw, 24px);
+  margin-top: clamp(46px, 5.5vw, 66px);
+}
+.staff-card {
+  padding: clamp(24px, 2.4vw, 32px);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  border: 1px solid var(--hairline);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: transform .32s var(--ease), box-shadow .32s var(--ease);
+}
+.staff-card:hover { transform: translateY(-5px); box-shadow: var(--sh-md); }
+.staff-card .sol-ico { width: 50px; height: 50px; margin-bottom: 20px; }
+.staff-card h3 {
+  font-family: var(--sans);
+  font-size: .855rem; font-weight: 700;
+  letter-spacing: .095em; text-transform: uppercase;
+  color: var(--navy);
+}
+.staff-kicker {
+  font-size: .715rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--gold); margin: 5px 0 14px; font-weight: 600;
+}
+.staff-card p:last-child { color: var(--muted); font-size: .935rem; }
+
+
+/* ── 13. CLIENTELE ───────────────────────────────────────── */
+.client-marquee {
+  margin-top: clamp(34px, 4.2vw, 54px);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 11%, #000 89%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 11%, #000 89%, transparent 100%);
+}
+.client-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: client-scroll 42s linear infinite;
+}
+.client-marquee:hover .client-marquee-track,
+.client-marquee:focus-within .client-marquee-track { animation-play-state: paused; }
+.client-row {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin: 0; padding: 0;
+  list-style: none;
+}
+.client-item {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  min-height: 132px;
+  padding: 22px clamp(26px, 4.4vw, 58px);
+  border-right: 1px solid var(--hairline);
+}
+@keyframes client-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-33.3333%); }
+}
+.logo-plate {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: clamp(.92rem, 1.3vw, 1.08rem);
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: var(--muted);
+  opacity: .82;
+  transition: opacity .3s var(--ease), color .3s var(--ease);
+}
+.client-item:hover .logo-plate { opacity: 1; color: var(--navy); }
+.lp-mark {
+  width: 17px; height: 17px; flex: 0 0 auto;
+  border: 1.6px solid currentColor; border-radius: 50%;
+}
+.lp-sq { border-radius: 3px; transform: rotate(0deg); }
+.lp-dia { border-radius: 2px; transform: rotate(45deg); width: 14px; height: 14px; }
+.lp-tri { border: 0; width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 15px solid currentColor; border-radius: 0; }
+
+.clientele-stat {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px;
+  margin-top: clamp(30px, 4vw, 44px);
+}
+.stat-ico { color: var(--gold); }
+.stat-ico .ico { width: 26px; height: 26px; }
+.stat-num {
+  font-family: var(--serif);
+  font-size: 1.85rem; font-weight: 500;
+  color: var(--navy); line-height: 1.1; margin-top: 8px;
+}
+.stat-label {
+  font-size: .68rem; letter-spacing: .11em; text-transform: uppercase;
+  color: var(--muted-2);
+}
+.logo-note {
+  text-align: center; margin-top: 22px;
+  font-size: .755rem; color: var(--muted-2); letter-spacing: .02em;
+}

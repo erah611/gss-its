@@ -1,0 +1,866 @@
+/* ============================================================
+   GSS — Global Soft Systems
+   script.js  —  vanilla, no dependencies
+   ------------------------------------------------------------
+   01. Helpers
+   02. Theme toggle
+   03. Sticky header
+   04. Mobile overlay menu
+   05. Hero carousel
+   06. Scroll reveal
+   07. Section-aware nav highlighting
+   08. Footer year
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* ── 01. HELPERS ───────────────────────────────────────── */
+  var $  = function (sel, ctx) { return (ctx || document).querySelector(sel); };
+  var $$ = function (sel, ctx) { return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); };
+
+  var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var reduceMotion = motionQuery.matches;
+
+  /* Theme preference is kept in sessionStorage, not localStorage, so every
+     fresh visit starts on the default (light) theme; a toggle only persists
+     for the current browsing session (and across page navigation within it). */
+  function store(key, value) {
+    try {
+      if (value === undefined) return window.sessionStorage.getItem(key);
+      window.sessionStorage.setItem(key, value);
+    } catch (e) { /* storage blocked — degrade silently */ }
+    return null;
+  }
+
+
+  /* ── 02. THEME TOGGLE ──────────────────────────────────── */
+  (function theme() {
+    var root = document.documentElement;
+    var toggles = [$('#themeToggle'), $('#themeToggleMobile')].filter(Boolean);
+
+    // drop any legacy persistent preference so returning visitors also start light
+    try { window.localStorage.removeItem('gss-theme'); } catch (e) { /* ignore */ }
+
+    var saved = store('gss-theme');
+    if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved);
+
+    function sync() {
+      var isDark = root.getAttribute('data-theme') === 'dark';
+      toggles.forEach(function (btn) {
+        btn.setAttribute('aria-pressed', String(isDark));
+        btn.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+      });
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', isDark ? '#0B1424' : '#0F2247');
+    }
+
+    toggles.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        store('gss-theme', next);
+        sync();
+      });
+    });
+
+    sync();
+  }());
+
+
+  /* ── 03. STICKY HEADER ─────────────────────────────────── */
+  (function stickyHeader() {
+    var header = $('#siteHeader');
+    if (!header) return;
+    var ticking = false;
+
+    // sections that sit behind a transparent, light-on-dark header
+    var darkSections = $$('[data-header="dark"]');
+
+    function update() {
+      var onDark = false;
+      if (darkSections.length) {
+        var probe = header.offsetHeight * 0.5;
+        onDark = darkSections.some(function (s) {
+          var r = s.getBoundingClientRect();
+          return r.top <= probe && r.bottom >= probe;
+        });
+      }
+      header.classList.toggle('hdr-on-media', onDark);
+      header.classList.toggle('is-stuck', window.scrollY > 24 && !onDark);
+      ticking = false;
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
+    }, { passive: true });
+    window.addEventListener('resize', function () {
+      if (!ticking) { ticking = true; window.requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+  }());
+
+
+  /* ── 04. MOBILE OVERLAY MENU ───────────────────────────── */
+  (function mobileMenu() {
+    var toggle = $('#menuToggle');
+    var panel  = $('#mobileNav');
+    if (!toggle || !panel) return;
+
+    function open() {
+      panel.hidden = false;
+      // force a frame so the opacity transition runs
+      window.requestAnimationFrame(function () { panel.classList.add('is-open'); });
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.setAttribute('aria-label', 'Close menu');
+      document.documentElement.classList.add('nav-open');
+      document.body.classList.add('nav-open');
+    }
+
+    function close() {
+      panel.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Open menu');
+      document.documentElement.classList.remove('nav-open');
+      document.body.classList.remove('nav-open');
+      window.setTimeout(function () {
+        if (!panel.classList.contains('is-open')) panel.hidden = true;
+      }, reduceMotion ? 0 : 300);
+    }
+
+    toggle.addEventListener('click', function () {
+      if (toggle.getAttribute('aria-expanded') === 'true') { close(); } else { open(); }
+    });
+
+    $$('a', panel).forEach(function (link) { link.addEventListener('click', close); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+        close();
+        toggle.focus();
+      }
+    });
+
+    // if the viewport grows past the breakpoint, make sure we're not stuck open
+    window.matchMedia('(min-width: 1025px)').addEventListener('change', function (e) {
+      if (e.matches && toggle.getAttribute('aria-expanded') === 'true') close();
+    });
+  }());
+
+
+  /* ── 04b. SOCIAL / CONNECT DROPDOWN (desktop + tablet) ── */
+  (function socialMenu() {
+    var menu = $('#socialMenu');
+    if (!menu) return;
+    var btn   = $('#socialToggle', menu);
+    var drop  = $('#socialDropdown', menu);
+    var items = $$('.social-item', drop);
+    if (!btn || !drop) return;
+
+    var closeTimer = null;
+
+    function isOpen() { return menu.classList.contains('is-open'); }
+
+    function open() {
+      window.clearTimeout(closeTimer);
+      drop.hidden = false;
+      window.requestAnimationFrame(function () { menu.classList.add('is-open'); });
+      btn.setAttribute('aria-expanded', 'true');
+      window.setTimeout(function () {
+        document.addEventListener('click', onOutside);
+      }, 0);
+      document.addEventListener('keydown', onKey);
+    }
+
+    function close(returnFocus) {
+      menu.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onOutside);
+      document.removeEventListener('keydown', onKey);
+      closeTimer = window.setTimeout(function () {
+        if (!isOpen()) drop.hidden = true;
+      }, reduceMotion ? 0 : 260);
+      if (returnFocus) btn.focus();
+    }
+
+    function onOutside(e) {
+      if (!menu.contains(e.target)) close(false);
+    }
+
+    function focusItem(i) {
+      if (!items.length) return;
+      var n = (i + items.length) % items.length;
+      items[n].focus();
+    }
+
+    function onKey(e) {
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault(); close(true); break;
+        case 'ArrowDown':
+          e.preventDefault(); focusItem(items.indexOf(document.activeElement) + 1); break;
+        case 'ArrowUp':
+          e.preventDefault(); focusItem(items.indexOf(document.activeElement) - 1); break;
+        case 'Home':
+          e.preventDefault(); focusItem(0); break;
+        case 'End':
+          e.preventDefault(); focusItem(items.length - 1); break;
+        case 'Tab':
+          // let focus move, then close if it left the menu
+          window.setTimeout(function () {
+            if (!menu.contains(document.activeElement)) close(false);
+          }, 0);
+          break;
+      }
+    }
+
+    btn.addEventListener('click', function () {
+      isOpen() ? close(false) : open();
+    });
+    btn.addEventListener('keydown', function (e) {
+      if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && !isOpen()) {
+        if (e.key === 'ArrowDown') e.preventDefault();
+        open();
+        if (e.key === 'ArrowDown') window.setTimeout(function () { focusItem(0); }, 30);
+      }
+    });
+    items.forEach(function (it) {
+      it.addEventListener('click', function () { close(false); });
+    });
+
+    // collapse if the viewport crosses into the mobile range
+    window.matchMedia('(max-width: 767.98px)').addEventListener('change', function (e) {
+      if (e.matches && isOpen()) close(false);
+    });
+  }());
+
+
+  /* ── 04b1. CUSTOM SELECT (form dropdown menus) ───────────
+     Native <select> popups can't be styled cross-browser, so form fields
+     that need a styled dropdown (Work Model, Select an Area, …) use this
+     button + listbox pattern instead — one init per .gss-select found on
+     the page. Same open/close/outside-click shape as the social menu
+     above, plus a roving "active" option for arrow-key navigation. */
+  $$('.gss-select').forEach(function (root) {
+    var btn   = $('.gss-select__btn', root);
+    var menu  = $('.gss-select__menu', root);
+    var value = $('.gss-select__value', root);
+    var input = $('.gss-select__input', root);
+    var opts  = $$('.gss-select__opt', root);
+    if (!btn || !menu || !opts.length) return;
+
+    opts.forEach(function (opt, i) {
+      if (!opt.id) opt.id = (root.getAttribute('data-name') || 'gss-select') + '-opt-' + i;
+    });
+
+    var closeTimer = null;
+    var activeIndex = Math.max(0, opts.findIndex(function (o) { return o.classList.contains('is-selected'); }));
+
+    function isOpen() { return root.classList.contains('is-open'); }
+
+    function setActive(i, scrollIt) {
+      activeIndex = (i + opts.length) % opts.length;
+      opts.forEach(function (o, idx) { o.classList.toggle('is-active', idx === activeIndex); });
+      btn.setAttribute('aria-activedescendant', opts[activeIndex].id);
+      if (scrollIt !== false) opts[activeIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    function open() {
+      window.clearTimeout(closeTimer);
+      menu.hidden = false;
+      window.requestAnimationFrame(function () { root.classList.add('is-open'); });
+      btn.setAttribute('aria-expanded', 'true');
+      setActive(activeIndex);
+      window.setTimeout(function () { document.addEventListener('click', onOutside); }, 0);
+      document.addEventListener('keydown', onKey);
+    }
+
+    function close(returnFocus) {
+      root.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onOutside);
+      document.removeEventListener('keydown', onKey);
+      closeTimer = window.setTimeout(function () {
+        if (!isOpen()) menu.hidden = true;
+      }, reduceMotion ? 0 : 220);
+      if (returnFocus) btn.focus();
+    }
+
+    function onOutside(e) { if (!root.contains(e.target)) close(false); }
+
+    function selectOption(i) {
+      var opt = opts[i];
+      if (!opt) return;
+      opts.forEach(function (o) { o.classList.remove('is-selected'); o.setAttribute('aria-selected', 'false'); });
+      opt.classList.add('is-selected');
+      opt.setAttribute('aria-selected', 'true');
+      value.textContent = opt.dataset.short || opt.textContent;
+      root.classList.toggle('has-value', !!opt.dataset.value);
+      if (input) input.value = opt.dataset.value || '';
+      // country-code options repeat the same dial code (US/Canada are both
+      // "+1"), so the visible trigger alone can't tell them apart — keep the
+      // accessible name in sync with the full option label instead.
+      if (opt.dataset.short) {
+        var nameEl = $('.gss-select__optname', opt);
+        btn.setAttribute('aria-label', (nameEl ? nameEl.textContent : opt.textContent) + ', ' + opt.dataset.short);
+      }
+      activeIndex = i;
+    }
+
+    function onKey(e) {
+      switch (e.key) {
+        case 'Escape': e.preventDefault(); close(true); break;
+        case 'ArrowDown': e.preventDefault(); setActive(activeIndex + 1); break;
+        case 'ArrowUp': e.preventDefault(); setActive(activeIndex - 1); break;
+        case 'Home': e.preventDefault(); setActive(0); break;
+        case 'End': e.preventDefault(); setActive(opts.length - 1); break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault(); selectOption(activeIndex); close(true); break;
+        case 'Tab':
+          window.setTimeout(function () {
+            if (!root.contains(document.activeElement)) close(false);
+          }, 0);
+          break;
+      }
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      isOpen() ? close(false) : open();
+    });
+    opts.forEach(function (opt, i) {
+      opt.addEventListener('click', function (e) { e.stopPropagation(); selectOption(i); close(true); });
+      opt.addEventListener('mouseenter', function () { setActive(i, false); });
+    });
+  });
+
+
+  /* ── 04b2. NAV MEGA MENU (Solutions, desktop) ────────────
+     Plain CSS :hover breaks here: the panel is position:fixed right under
+     the header, so there's a real pixel gap between the "Solutions" link
+     and the panel's top edge. The instant the pointer crosses that gap —
+     over neither element — :hover is lost and the menu closes before the
+     cursor arrives. Same fix as the Connect dropdown above: open instantly,
+     but close on a short delay so a normal mouse move across the gap
+     doesn't get caught mid-transit. */
+  (function navMegaMenu() {
+    $$('.nav-desktop li.has-dropdown').forEach(function (li) {
+      var link = $(':scope > a', li);
+      var mega = $('.nav-megamenu', li);
+      if (!link || !mega) return;
+
+      var closeTimer = null;
+      var CLOSE_DELAY = 300;
+
+      function open() {
+        window.clearTimeout(closeTimer);
+        li.classList.add('is-open');
+        link.setAttribute('aria-expanded', 'true');
+      }
+
+      function scheduleClose() {
+        window.clearTimeout(closeTimer);
+        closeTimer = window.setTimeout(function () {
+          li.classList.remove('is-open');
+          link.setAttribute('aria-expanded', 'false');
+        }, reduceMotion ? 0 : CLOSE_DELAY);
+      }
+
+      function closeNow() {
+        window.clearTimeout(closeTimer);
+        li.classList.remove('is-open');
+        link.setAttribute('aria-expanded', 'false');
+      }
+
+      // mouseenter/mouseleave on the <li> fire once for the whole subtree
+      // (link + the fixed-positioned mega panel are both descendants), so
+      // this one pair covers hovering either part.
+      li.addEventListener('mouseenter', open);
+      li.addEventListener('mouseleave', scheduleClose);
+
+      // keyboard: open immediately on focus-in, close on focus leaving the
+      // whole item (no gap to cross, so no delay needed); Escape closes
+      // and returns focus to the trigger link.
+      li.addEventListener('focusin', open);
+      li.addEventListener('focusout', function () {
+        window.setTimeout(function () {
+          if (!li.contains(document.activeElement)) closeNow();
+        }, 0);
+      });
+      li.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeNow(); link.focus(); }
+      });
+
+      // collapse if the viewport crosses into the mobile range, where this
+      // nav is hidden and the mobile-subnav accordion takes over instead
+      window.matchMedia('(max-width: 1024px)').addEventListener('change', function (e) {
+        if (e.matches) closeNow();
+      });
+    });
+  }());
+
+
+  /* ── 04c. "CONNECT WITH US" DISCLOSURE (mobile overlay) ── */
+  (function mobileConnect() {
+    var box = $('#mobileConnect');
+    if (!box) return;
+    var toggle = $('#mobileConnectToggle', box);
+    var panel  = $('#mobileConnectPanel', box);
+    if (!toggle || !panel) return;
+
+    toggle.addEventListener('click', function () {
+      var collapsed = box.classList.toggle('is-collapsed');
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+    });
+  }());
+
+
+  /* ── 04d. NAV SUBMENUS (mobile overlay) ──────────────────
+     Generic: any ".mobile-subnav" item (Solutions today, more later)
+     gets a chevron button that expands its ".mobile-subnav-panel". */
+  (function mobileSubnav() {
+    $$('.mobile-subnav').forEach(function (item) {
+      var toggle = $('.mobile-subnav-toggle', item);
+      var wrap   = $('.mobile-subnav-wrap', item);
+      if (!toggle || !wrap) return;
+
+      toggle.addEventListener('click', function () {
+        var open = wrap.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+    });
+  }());
+
+
+  /* ── 05. HERO CAROUSEL ─────────────────────────────────── */
+  (function heroCarousel() {
+    var region = $('#hero');
+    var slides = $$('.hero-slide', region);
+    var dots   = $$('.dot', $('#heroDots'));
+    var live   = $('#heroLive');
+    if (!region || slides.length < 2) return;
+
+    var INTERVAL = 6500;
+    var index = 0;
+    var timer = null;
+    var paused = false;
+
+    function setSlide(next, announce) {
+      if (next === index) return;
+      index = next;
+
+      slides.forEach(function (slide, i) {
+        var active = i === index;
+        slide.classList.toggle('is-active', active);
+        slide.setAttribute('aria-hidden', String(!active));
+        // hidden slides must never hold keyboard focus
+        $$('a, button', slide).forEach(function (el) {
+          if (active) { el.removeAttribute('tabindex'); }
+          else { el.setAttribute('tabindex', '-1'); }
+        });
+      });
+
+      dots.forEach(function (dot, i) {
+        dot.classList.toggle('is-active', i === index);
+        dot.setAttribute('aria-selected', String(i === index));
+      });
+
+      if (announce && live) {
+        var heading = slides[index].querySelector('.hero-title');
+        live.textContent = 'Slide ' + (index + 1) + ' of ' + slides.length +
+          (heading ? ': ' + heading.textContent.replace(/\s+/g, ' ').trim() : '');
+      }
+    }
+
+    function advance() { setSlide((index + 1) % slides.length); }
+
+    function start() {
+      if (reduceMotion || paused || timer) return;
+      timer = window.setInterval(advance, INTERVAL);
+    }
+    function stop() {
+      if (timer) { window.clearInterval(timer); timer = null; }
+    }
+    function restart() { stop(); start(); }
+
+    // manual control — never steals focus
+    dots.forEach(function (dot) {
+      dot.addEventListener('click', function () {
+        setSlide(parseInt(dot.getAttribute('data-goto'), 10), true);
+        restart();
+      });
+    });
+
+    // arrow-key support while the dots have focus
+    $('#heroDots').addEventListener('keydown', function (e) {
+      var delta = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!delta) return;
+      e.preventDefault();
+      var next = (index + delta + slides.length) % slides.length;
+      setSlide(next, true);
+      dots[next].focus();
+      restart();
+    });
+
+    // Pause while the visitor is actually interacting with the carousel.
+    //
+    // NB: this deliberately does NOT listen on the whole hero. The hero is a
+    // full-viewport section, so hovering it is the resting state for most
+    // pointers — binding the pause there stops the carousel permanently for
+    // anyone whose cursor happens to sit over the page. Only the controls and
+    // the active call-to-action count as "interacting".
+    var hotspots = [$('#heroDots')].concat($$('.hero-slide a.btn', region));
+
+    hotspots.forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('mouseenter', function () { paused = true; stop(); });
+      el.addEventListener('mouseleave', function () {
+        if (region.contains(document.activeElement)) return;
+        paused = false; start();
+      });
+    });
+
+    // keyboard focus anywhere in the hero also holds the carousel still
+    region.addEventListener('focusin', function () { paused = true; stop(); });
+    region.addEventListener('focusout', function () {
+      window.setTimeout(function () {
+        if (region.contains(document.activeElement)) return;
+        paused = false; start();
+      }, 0);
+    });
+
+    // pause when the tab isn't visible
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') { stop(); }
+      else if (!paused) { start(); }
+    });
+
+    // react live to a reduced-motion preference change
+    motionQuery.addEventListener('change', function (e) {
+      reduceMotion = e.matches;
+      if (reduceMotion) { stop(); } else { start(); }
+    });
+
+    // seed initial tabindex state, then run
+    slides.forEach(function (slide, i) {
+      if (i === index) return;
+      $$('a, button', slide).forEach(function (el) { el.setAttribute('tabindex', '-1'); });
+    });
+
+    start();
+  }());
+
+
+  /* ── 05b. HERO CARD HEIGHTS ────────────────────────────── */
+  // All four slides' credential cards share one height: the tallest card
+  // across every slide, published as --cred-card-h (see home.css). Slides
+  // sit in separate grid rows, so CSS alone can't equalise them; hidden
+  // slides still have layout, so they measure fine. Re-run whenever a
+  // card's text box changes size (web fonts landing late on a hidden
+  // slide, re-wrapping on resize) — observing the text, not the card, so
+  // setting the card heights can't retrigger it.
+  (function heroCardHeights() {
+    var hero = $('#hero');
+    var cards = hero ? $$('.cred-card', hero) : [];
+    if (cards.length < 2) return;
+    var timer = 0;
+    function equalise() {
+      timer = 0;
+      hero.style.removeProperty('--cred-card-h');
+      var tallest = 0;
+      cards.forEach(function (card) { tallest = Math.max(tallest, card.getBoundingClientRect().height); });
+      if (tallest) hero.style.setProperty('--cred-card-h', Math.ceil(tallest) + 'px');
+    }
+    // a short timer, not requestAnimationFrame: rAF only fires when the
+    // browser paints a frame, so a text change on a hidden slide could
+    // otherwise wait indefinitely before the heights were recalculated
+    function schedule() { if (!timer) timer = window.setTimeout(equalise, 30); }
+    equalise();
+    if ('ResizeObserver' in window) {
+      var observer = new ResizeObserver(schedule);
+      cards.forEach(function (card) {
+        var text = card.querySelector('.cred-txt');
+        if (text) observer.observe(text);
+      });
+    } else {
+      window.addEventListener('resize', schedule, { passive: true });
+    }
+    window.addEventListener('load', schedule);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+  }());
+
+  // Every slide's content block gets the tallest one's height (slide 1,
+  // which carries the extra tagline), exposed as --hero-content-h. With the
+  // content starting at the top of that shared box, the eyebrow sits the
+  // same distance below the navbar on all four slides instead of the
+  // taller slide being centered higher. The CSS only uses it where the
+  // slides are centered (tablet/desktop) — see responsive.css.
+  (function heroContentHeights() {
+    var hero = $('#hero');
+    var blocks = hero ? $$('.hero-content', hero) : [];
+    if (blocks.length < 2) return;
+    var timer = 0;
+    // Tablet/desktop only (matches responsive.css): the even gap between
+    // the hero's blocks, --hero-line, is sized here so the "How GSS Works"
+    // eyebrow below the hero still shows on the first screen. It aims for
+    // 36–44px by screen height and gives up only as much as that fold
+    // needs, never going under 18px. There are 9.5 units per slide: double
+    // gaps after the eyebrow, headline, paragraph and cards (8), a single
+    // gap from the tagline to the button (1), and half a gap from the
+    // button down to the dots (.5).
+    var desktop = window.matchMedia('(min-width: 768px) and (min-height: 500px)');
+    var peekEl = $('#about .eyebrow');
+    var GAPS = 9.5, MIN_LINE = 18;
+    function tallestBlock() {
+      var tallest = 0;
+      blocks.forEach(function (el) { tallest = Math.max(tallest, el.getBoundingClientRect().height); });
+      return tallest;
+    }
+    function fitLine() {
+      hero.style.removeProperty('--hero-line');
+      if (!desktop.matches || !peekEl) return;
+      var viewH = window.innerHeight;
+      var want = Math.min(44, Math.max(36, viewH * .045));
+      // measure with no gaps at all: what's left is the text, cards and
+      // the slides' own padding (which holds the dots). The fixed extra
+      // gap (--hero-gap-add in responsive.css) is zeroed too, so it's
+      // added on top of the fitted gaps rather than squeezed out of them.
+      hero.style.setProperty('--hero-line', '0px');
+      hero.style.setProperty('--hero-gap-add', '0px');
+      var base = tallestBlock();
+      var slide = blocks[0].parentElement;
+      var cs = window.getComputedStyle(slide);
+      var pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      hero.style.removeProperty('--hero-gap-add');
+      // how far into the next section its eyebrow ends, plus a little air
+      var section = peekEl.closest('section');
+      var peek = peekEl.offsetTop + peekEl.offsetHeight + 12;
+      if (section && peekEl.offsetParent !== section) {
+        peek = peekEl.getBoundingClientRect().bottom - section.getBoundingClientRect().top + 12;
+      }
+      var room = viewH - hero.offsetTop - peek - pad - base;
+      var line = Math.max(MIN_LINE, Math.min(want, room / GAPS));
+      hero.style.setProperty('--hero-line', line.toFixed(1) + 'px');
+    }
+    function equalise() {
+      timer = 0;
+      hero.style.removeProperty('--hero-content-h');
+      fitLine();
+      var tallest = tallestBlock();
+      if (tallest) hero.style.setProperty('--hero-content-h', Math.ceil(tallest) + 'px');
+    }
+    function schedule() { if (!timer) timer = window.setTimeout(equalise, 30); }
+    equalise();
+    // watch the blocks' children, not the blocks: the min-height set here
+    // resizes the blocks themselves, but never what's inside them — so a
+    // font swap or the cards' own height pass re-measures without looping
+    if ('ResizeObserver' in window) {
+      var observer = new ResizeObserver(schedule);
+      blocks.forEach(function (el) {
+        Array.prototype.forEach.call(el.children, function (child) { observer.observe(child); });
+      });
+    }
+    // the gap also follows the window's height, which never resizes the
+    // blocks' children on its own
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('load', schedule);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+  }());
+
+
+  /* ── 06. SCROLL REVEAL ─────────────────────────────────── */
+  (function reveal() {
+    var items = $$('.reveal');
+    if (!items.length) return;
+
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      items.forEach(function (el) { el.classList.add('is-in'); });
+      return;
+    }
+
+    var pending = items.slice();
+
+    function show(el) {
+      if (el.classList.contains('is-in')) return;
+      var siblings = el.parentElement ? $$('.reveal', el.parentElement) : [];
+      var order = Math.max(0, siblings.indexOf(el));
+      // was 90ms/step: fine for content discovered by scrolling, but it
+      // stacked with the .reveal transition duration to leave later
+      // same-parent siblings (e.g. the About heading right after its
+      // eyebrow) visibly still fading in well after they were already on
+      // screen and already triggered.
+      el.style.transitionDelay = Math.min(order, 6) * 45 + 'ms';
+      el.classList.add('is-in');
+      observer.unobserve(el);
+    }
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) show(entry.target);
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.12 });
+
+    items.forEach(function (el) { observer.observe(el); });
+
+    // On arrival, show everything already on screen, even partly. The
+    // observer's -12% bottom margin is right for content discovered by
+    // scrolling, but it left the heading just below the home hero (sitting
+    // in that bottom strip) hidden until the visitor scrolled a little.
+    // Re-run on load in case late images/fonts shift the layout.
+    function showInView() {
+      var fold = window.innerHeight;
+      pending = pending.filter(function (el) {
+        if (el.classList.contains('is-in')) return false;
+        var r = el.getBoundingClientRect();
+        if (r.top < fold && r.bottom > 0) { show(el); return false; }
+        return true;
+      });
+    }
+    showInView();
+    window.addEventListener('load', showInView, { once: true });
+
+    // Safety net: very fast or programmatic scrolling can outrun the observer's
+    // delivery, so sweep on scroll for anything that is already past the fold.
+    var sweeping = false;
+    function sweep() {
+      sweeping = false;
+      var limit = window.innerHeight * 0.92;
+      pending = pending.filter(function (el) {
+        if (el.classList.contains('is-in')) return false;
+        if (el.getBoundingClientRect().top < limit) { show(el); return false; }
+        return true;
+      });
+      if (!pending.length) window.removeEventListener('scroll', onScroll);
+    }
+    function onScroll() {
+      if (!sweeping) { sweeping = true; window.requestAnimationFrame(sweep); }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    onScroll();
+  }());
+
+
+  /* ── 07. SECTION-AWARE NAV HIGHLIGHTING ────────────────── */
+  (function navSpy() {
+    var links = $$('.nav-desktop a[href^="#"]');
+    if (!links.length || !('IntersectionObserver' in window)) return;
+
+    var map = {};
+    var targets = [];
+    links.forEach(function (link) {
+      var id = link.getAttribute('href').slice(1);
+      var section = document.getElementById(id);
+      if (!section) return;
+      map[id] = link;
+      targets.push(section);
+    });
+
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        links.forEach(function (l) { l.classList.remove('is-current'); l.removeAttribute('aria-current'); });
+        var link = map[entry.target.id];
+        if (link) { link.classList.add('is-current'); link.setAttribute('aria-current', 'true'); }
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+
+    targets.forEach(function (t) { spy.observe(t); });
+  }());
+
+
+  /* ── 08. FOOTER YEAR ───────────────────────────────────── */
+  (function year() {
+    var el = $('#year');
+    if (el) el.textContent = String(new Date().getFullYear());
+  }());
+
+
+  /* ── 09. PAGE TRANSITION ───────────────────────────────── */
+  /* Leaves a page by fading the content out (the same motion the hero slides
+     use), then navigates. The entrance — crossfade + staggered rise — is pure
+     CSS in section 18b, so it works even without this script. */
+  (function pageTransition() {
+    var main = $('#main');
+    if (!main) return;
+
+    var header = $('.header-inner');
+    var sections = $$('#main > section');
+    var leaving = false;
+
+    var ease = getComputedStyle(document.documentElement)
+                 .getPropertyValue('--ease').trim() || 'ease';
+
+    function clearAnim(el) { if (el) el.style.animation = 'none'; }
+
+    function settle() {                    // guarantee the page is visible once it has arrived
+      if (leaving) return;
+      clearAnim(main);
+      clearAnim(header);
+      sections.forEach(clearAnim);
+    }
+
+    function leave(url) {
+      if (leaving) return;
+      leaving = true;
+
+      if (reduceMotion) { window.location.href = url; return; }
+
+      // hand opacity control back from the entrance animations, then fade out
+      clearAnim(main);
+      sections.forEach(function (s) { s.style.animation = 'none'; });
+      void main.offsetWidth;
+      main.style.transition = 'opacity .42s ' + ease + ', transform .42s ' + ease;
+      main.style.opacity = '0';
+      main.style.transform = 'translateY(-10px)';
+
+      var done = false;
+      function go() { if (done) return; done = true; window.location.href = url; }
+      main.addEventListener('transitionend', function (e) {
+        if (e.target === main && e.propertyName === 'opacity') go();
+      });
+      window.setTimeout(go, 560);          // failsafe if transitionend never fires
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button !== 0 ||
+          e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+      var a = e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a) return;
+      if (a.target && a.target !== '_self') return;
+      if (a.hasAttribute('download')) return;
+
+      var href = a.getAttribute('href');
+      if (!href || /^(#|mailto:|tel:|javascript:)/i.test(href)) return;
+
+      var dest;
+      try { dest = new URL(href, window.location.href); } catch (err) { return; }
+      if (dest.origin !== window.location.origin) return;
+      // same page (a bare hash or query change) — let the browser handle it
+      if (dest.pathname === window.location.pathname && dest.search === window.location.search) return;
+
+      e.preventDefault();
+      leave(dest.href);
+    });
+
+    // coming back through the bfcache — clear the fade-out and replay the entrance
+    window.addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      leaving = false;
+      [main, header].concat(sections).forEach(function (el) {
+        if (!el) return;
+        el.style.animation = '';
+        el.style.transition = '';
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
+      void main.offsetWidth;
+    });
+
+    // safety net: never leave the page stuck mid-fade-in
+    window.addEventListener('load', function () {
+      window.setTimeout(settle, 1500);
+    });
+  }());
+
+}());
