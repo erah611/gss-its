@@ -23,13 +23,13 @@ No SMTP, no mailbox password, no mail library. Shared code:
 Set in `server/lib/form-mail.php` (not in the frontend):
 
 ```php
-const FORM_MAIL_TO   = 'contact@globalsoftsystems.com, erah@globalsoftsystems.com, erah@gsspros.com, josh@gsspros.com';
-const FORM_MAIL_FROM = 'noreply@globalsoftsystems.com';
+const FORM_MAIL_TO   = 'contact@gss-its.net';
+const FORM_MAIL_FROM = 'noreply@gss-its.com';
 ```
 
 `From` and `Reply-To` are both `FORM_MAIL_FROM`, and it's also used as
 the envelope sender (`-f`). It must be an address on the domain hosted
-on the same server (globalsoftsystems.com on HostGator), or Outlook and
+on the same server (gss-its.com on HostGator), or Outlook and
 others are likely to reject or spam-file the message. The noreply
 mailbox doesn't need to exist. The visitor's own address is in the
 email body ("Reply to … at: …"), since Reply-To is noreply.
