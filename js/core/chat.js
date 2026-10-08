@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  var EMBED_SRC = 'https://embed.tawk.to/6ac6bde198496b34cde4bd47/1k4c5bect';
+  var EMBED_SRC = 'https://embed.tawk.to/6ac79d417c806234ca666229/1k4drsife';
 
   // Must exist before the embed script loads.
   var Tawk_API = window.Tawk_API = window.Tawk_API || {};
@@ -47,5 +47,9 @@
   s.src = EMBED_SRC;
   s.charset = 'UTF-8';
   s.setAttribute('crossorigin', '*');
+  // Without this the browser queues the request behind the page's images
+  // until the whole page has been parsed, so the bubble showed up late on a
+  // first visit.
+  s.setAttribute('fetchpriority', 'high');
   document.head.appendChild(s);
 }());

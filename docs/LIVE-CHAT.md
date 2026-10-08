@@ -2,9 +2,10 @@
 
 The chat bubble sits in the lower-right corner of every page.
 
-- **Code:** `js/core/chat.js`, loaded on every page in `html/` right after
-  `js/core/site.js`. It loads the tawk.to widget and hides the bubble
-  while the site's own overlays are open (mobile menu, Privacy/Disclaimer
+- **Code:** `js/core/chat.js`, loaded in the `<head>` of every page in `html/`,
+  with preconnects to `embed.tawk.to` and `va.tawk.to`, so the widget starts
+  loading straight away on the first page. It loads the tawk.to widget and
+  hides the bubble while the site's own overlays are open (mobile menu, Privacy/Disclaimer
   dialog, Easy Apply). An open conversation is left alone.
 - **Everything the visitor sees** — position, colours, greeting and
   messages — is set in the tawk.to dashboard, not in code. tawk.to's
@@ -12,7 +13,7 @@ The chat bubble sits in the lower-right corner of every page.
   (<https://developer.tawk.to/jsapi/>). Use the settings below so the
   widget matches the site.
 
-Property / widget ID: `6ac6bde198496b34cde4bd47` / `1k4c5bect` (in `chat.js`).
+Property / widget ID: `6ac79d417c806234ca666229` / `1k4drsife` (in `chat.js`).
 
 ## 1. Position
 
